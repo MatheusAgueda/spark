@@ -1,0 +1,30 @@
+name: gv-build-lod
+on:
+  push:
+    branches: [gv-build]
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {os: macos-15, target: aarch64-apple-darwin}
+          - {os: ubuntu-24.04, target: x86_64-unknown-linux-gnu}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - name: build
+        working-directory: rust
+        run: cargo build --release --locked -p build-lod
+      - name: package
+        run: |
+          mkdir -p out/build-lod-${{ matrix.target }}
+          cp rust/target/release/build-lod LICENSE out/build-lod-${{ matrix.target }}/
+          tar -C out -cJf build-lod-${{ matrix.target }}.tar.xz build-lod-${{ matrix.target }}
+          shasum -a 256 build-lod-${{ matrix.target }}.tar.xz > build-lod-${{ matrix.target }}.tar.xz.sha256
+      - uses: actions/upload-artifact@v7
+        with:
+          name: build-lod-${{ matrix.target }}
+          path: build-lod-${{ matrix.target }}.tar.xz*
+          retention-days: 30
